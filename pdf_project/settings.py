@@ -10,12 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 import os
-from dotenv import load_dotenv
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 
-load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-secret-key")
@@ -29,12 +27,17 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 SECRET_KEY = 'django-insecure-+419q60ualopm#ej9mg9fus_hu9xu(e&0-5=c-cup3qskx$xl5'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ['*']
 
 
 # Application definition
+
+VERCEL_URL = os.environ.get("VERCEL_URL")
+CSRF_TRUSTED_ORIGINS = ["https://*.vercel.app"]
+if VERCEL_URL:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{VERCEL_URL}")
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -112,7 +115,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Jakarta'
 
 USE_I18N = True
 
@@ -123,4 +126,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+TMP_DIR = "/tmp" if os.environ.get("VERCEL") else str(BASE_DIR / "tmp")
+os.makedirs(TMP_DIR, exist_ok=True)
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
