@@ -8,52 +8,52 @@ MAX_UPLOAD_SIZE_BYTES = 15 * 1024 * 1024
 class PDFProcessForm(forms.Form):
     pdf_file = forms.FileField(
         label="File PDF",
-        help_text="Maksimal 15MB, format .pdf",
+        help_text="Maximal 15MB, format .pdf",
     )
 
     old_text = forms.CharField(
-        label="Teks lama",
+        label="Previous Text",
         required=False,
         max_length=500,
-        widget=forms.TextInput(attrs={"placeholder": 'mis. "Jakarta, 1 Januari 2026"'}),
+        widget=forms.TextInput(attrs={"placeholder": 'example: "Hello World"'}),
     )
     new_text = forms.CharField(
-        label="Teks baru",
+        label="New Text",
         required=False,
         max_length=500,
-        widget=forms.TextInput(attrs={"placeholder": 'mis. "Jakarta, 4 Agustus 2026"'}),
+        widget=forms.TextInput(attrs={"placeholder": 'example: "World Hello"'}),
     )
 
     before_word = forms.CharField(
-        label="Kata kunci sebelum angka",
+        label="Keyword",
         required=False,
         max_length=100,
-        widget=forms.TextInput(attrs={"placeholder": 'mis. "VAT" atau "TOTAL"'}),
+        widget=forms.TextInput(attrs={"placeholder": 'example: "TOTAL"'}),
     )
     stop_symbol = forms.CharField(
-        label="Simbol penutup",
+        label="Boundary Sign",
         required=False,
         max_length=10,
         initial="%",
-        widget=forms.TextInput(attrs={"placeholder": 'mis. "%" atau "$"'}),
+        widget=forms.TextInput(attrs={"placeholder": 'example: "$"'}),
     )
     first_percent = forms.FloatField(
-        label="Persentase pertama",
+        label="Previous Percentage",
         required=False,
-        widget=forms.NumberInput(attrs={"step": "any", "placeholder": "mis. 11"}),
+        widget=forms.NumberInput(attrs={"step": "any", "placeholder": "example: 10"}),
     )
     second_percent = forms.FloatField(
-        label="Persentase kedua",
+        label="New Percentage",
         required=False,
-        widget=forms.NumberInput(attrs={"step": "any", "placeholder": "mis. 12"}),
+        widget=forms.NumberInput(attrs={"step": "any", "placeholder": "example: 5"}),
     )
 
     def clean_pdf_file(self):
         f = self.cleaned_data["pdf_file"]
         if not f.name.lower().endswith(".pdf"):
-            raise forms.ValidationError("File harus berformat .pdf.")
+            raise forms.ValidationError("File should be a pdf.")
         if f.size > MAX_UPLOAD_SIZE_BYTES:
-            raise forms.ValidationError("Ukuran file melebihi batas 15MB.")
+            raise forms.ValidationError("File size exceeds its limit (MAX 15 MB).")
         return f
 
     def clean(self):
@@ -70,11 +70,11 @@ class PDFProcessForm(forms.Form):
 
         if bool(old_text) != bool(new_text):
             raise forms.ValidationError(
-                "Untuk mode manual, isi kedua field: teks lama DAN teks baru."
+                "For Find and Replace mode, fill these fields: Previous Text and New Text"
             )
         if before_word and (first_percent is None or second_percent is None):
             raise forms.ValidationError(
-                "Untuk mode otomatis, isi kata kunci, persentase pertama, DAN persentase kedua."
+                "For Find and Automatic Replace mode, fill these fields: Keywords, Previous Text and New Text"
             )
 
         if not has_manual and not has_auto:
@@ -83,8 +83,11 @@ class PDFProcessForm(forms.Form):
                 "atau Kalkulasi otomatis (kata kunci & kedua persentase)."
             )
 
+        if first_percent is not None and first_percent == 0:
+                    self.add_error("first_percent", "Any percentage can't be 0")
+
         if second_percent is not None and second_percent == 0:
-            self.add_error("second_percent", "Persentase kedua tidak boleh 0.")
+            self.add_error("second_percent", "Any percentage can't be 0")
 
         cleaned["stop_symbol"] = (cleaned.get("stop_symbol") or "%").strip() or "%"
         cleaned["has_manual"] = has_manual

@@ -64,8 +64,8 @@ def _process_pdf(cleaned_data, uploaded_file):
             )
             if auto_result is None and not has_manual:
                 raise ValueError(
-                    f'Tidak ditemukan angka di antara "{before_word}" dan "{stop_symbol}", '
-                    f"atau nilai tersebut tidak bisa dihitung."
+                    f'There are no numbers are found between "{before_word}" and "{stop_symbol}", '
+                    f"or value can\'t be calculated."
                 )
 
         if has_manual and auto_result:
@@ -92,7 +92,7 @@ def _process_pdf(cleaned_data, uploaded_file):
                 auto_result["page_index"], auto_result["rect"], auto_result["replacement_str"],
             )
         else:
-            raise ValueError("Tidak ada operasi yang bisa dijalankan dengan input yang diberikan.")
+            raise ValueError("No calculation can be executed with the given inputs.")
 
         with open(output_path, "rb") as f:
             pdf_bytes = f.read()

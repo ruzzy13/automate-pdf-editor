@@ -150,7 +150,7 @@ def _search_flexible(page, target_text):
 
 def _diagnose_not_found(input_pdf, target_text):
     doc = fitz.open(input_pdf)
-    print("\nMencari bagian dari teks")
+    print("\nSearching string")
 
     tokens = re.findall(r"\d+|\D+", target_text)
     tokens = [t for t in tokens if t.strip()]
@@ -163,16 +163,16 @@ def _diagnose_not_found(input_pdf, target_text):
                 found_on.append(i + 1)
         if found_on:
             any_partial_found = True
-            print(f'    - Potongan "{token}" DITEMUKAN di halaman {found_on}')
+            print(f'"{token}" were found on {found_on}')
         else:
-            print(f'    - Potongan "{token}" tidak ditemukan')
+            print(f'"{token}" wasn\'t found')
 
     doc.close()
 
     if any_partial_found:
-        print("Sebagian teks ketemu, sebagian tidak")
+        print("Text are found partially")
     else:
-        print("Tidak ada potongan yang ketemu sama sekali.")
+        print("No partial text are found.")
 
 
 def replace_text_in_pdf(input_path, output_path, old_text, new_text,
@@ -197,8 +197,8 @@ def replace_text_in_pdf(input_path, output_path, old_text, new_text,
     final_output_path = _save_pdf_safely(doc, output_path)
     doc.close()
 
-    print(f"Selesai. {total_replaced} kemunculan teks diganti.")
-    print(f"File disimpan")
+    print("Done.")
+    print("File Saved")
 
     return final_output_path, total_replaced
 
@@ -211,8 +211,8 @@ def replace_at_position(input_path, output_path, page_index, rect, new_text, shr
     final_output_path = _save_pdf_safely(doc, output_path)
     doc.close()
 
-    print(f"Selesai. {count} kemunculan teks diganti")
-    print(f"File disimpan")
+    print("Done.")
+    print("File Saved")
 
     return final_output_path, count
 
@@ -398,14 +398,14 @@ def _save_pdf_safely(doc, output_path):
         doc.save(output_path, garbage=4, deflate=True)
         return output_path
     except Exception as e:
-        print(f"\nGagal menyimpan.")
+        print("\nFailed to save file")
 
         base, ext = os.path.splitext(output_path)
         for i in range(1, 6):
             alt_path = f"{base}_{i}{ext}"
             try:
                 doc.save(alt_path, garbage=4, deflate=True)
-                print(f"Berhasil disimpan")
+                print("\nFile successfully saved")
                 return alt_path
             except Exception:
                 continue

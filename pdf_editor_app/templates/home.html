@@ -63,13 +63,10 @@
     <header class="mb-10">
       <p class="font-mono text-xs tracking-widest uppercase" style="color:var(--ink-soft)">Automate PDF Editor</p>
       <h1 class="font-display text-4xl sm:text-5xl mt-2 leading-tight">
-        <span class="strike" style="color:var(--ink-soft)">VAT 11%</span>
-        <span class="mx-2" style="color:var(--pen)">&rarr;</span>
-        <span style="color:var(--ink)">VAT 12%</span>
       </h1>
       <p class="mt-4 max-w-xl" style="color:var(--ink-soft)">
-        Unggah PDF, tandai bagian yang perlu diganti, lalu unduh hasil edit —
-        baik lewat penggantian teks manual maupun kalkulasi angka otomatis.
+        Upload, edit, and download your PDF with ease.
+        Replace text manually or automatically update figures through smart calculations.
       </p>
     </header>
 
@@ -86,10 +83,10 @@
 
       <!-- File upload -->
       <div class="mb-8">
-        <label class="block font-display text-lg mb-2" for="id_pdf_file">Berkas PDF</label>
+        <label class="block font-display text-lg mb-2" for="id_pdf_file">File</label>
         <label id="dropzone" for="id_pdf_file" class="dropzone rounded-lg flex flex-col items-center justify-center text-center py-10 px-4 cursor-pointer transition-colors">
           <span class="font-mono text-sm" style="color:var(--ink-soft)" id="dropzone-text">
-            Klik untuk pilih file, atau seret PDF ke sini &middot; maks 15MB
+            Click to choose fil or the file here &middot; Max file size 15MB
           </span>
         </label>
         {{ form.pdf_file }}
@@ -101,22 +98,22 @@
       <!-- Tabs -->
       <div class="flex gap-6 border-b mb-6" style="border-color:var(--rule)">
         <button type="button" class="tab-btn pb-3 border-b-2 font-medium text-sm transition-colors" data-tab="manual" aria-selected="true">
-          Find &amp; Replace manual
+          Find &amp; Replace
         </button>
         <button type="button" class="tab-btn pb-3 border-b-2 font-medium text-sm transition-colors" data-tab="auto" aria-selected="false">
-          Kalkulasi otomatis
+          Find &amp; Automatic Replace 
         </button>
       </div>
 
       <!-- Manual panel -->
       <div id="panel-manual" class="space-y-4">
-        <p class="text-sm" style="color:var(--ink-soft)">Ganti satu bagian teks persis seperti tampilannya di PDF.</p>
+        <p class="text-sm" style="color:var(--ink-soft)">Update a specific text section and keep the same look and formatting as the original PDF.</p>
         <div>
-          <label class="block text-sm font-medium mb-1" for="{{ form.old_text.id_for_label }}">Teks lama</label>
+          <label class="block text-sm font-medium mb-1" for="{{ form.old_text.id_for_label }}">Previous text</label>
           {{ form.old_text }}
         </div>
         <div>
-          <label class="block text-sm font-medium mb-1" for="{{ form.new_text.id_for_label }}">Teks baru</label>
+          <label class="block text-sm font-medium mb-1" for="{{ form.new_text.id_for_label }}">New Text</label>
           {{ form.new_text }}
         </div>
       </div>
@@ -129,25 +126,22 @@
         </p>
         <div class="grid sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium mb-1" for="{{ form.before_word.id_for_label }}">Kata kunci sebelum angka</label>
+            <label class="block text-sm font-medium mb-1" for="{{ form.before_word.id_for_label }}">Keyword</label>
             {{ form.before_word }}
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1" for="{{ form.stop_symbol.id_for_label }}">Simbol penutup</label>
+            <label class="block text-sm font-medium mb-1" for="{{ form.stop_symbol.id_for_label }}">Boundary Sign</label>
             {{ form.stop_symbol }}
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1" for="{{ form.first_percent.id_for_label }}">Persentase pertama</label>
+            <label class="block text-sm font-medium mb-1" for="{{ form.first_percent.id_for_label }}">First Percentage</label>
             {{ form.first_percent }}
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1" for="{{ form.second_percent.id_for_label }}">Persentase kedua</label>
+            <label class="block text-sm font-medium mb-1" for="{{ form.second_percent.id_for_label }}">Second Percentage</label>
             {{ form.second_percent }}
           </div>
         </div>
-        <p class="font-mono text-xs" style="color:var(--ink-soft)">
-          hasil = (angka &times; persen_pertama / 100) &divide; (persen_kedua / 100)
-        </p>
       </div>
 
       {% for field in form %}
@@ -160,14 +154,14 @@
         <button type="submit" id="submit-btn"
           class="px-5 py-2.5 rounded-md font-medium text-sm text-white transition-opacity hover:opacity-90"
           style="background:var(--pen)">
-          Proses &amp; unduh PDF
+          Process &amp; donwload PDF
         </button>
-        <span id="submit-status" class="font-mono text-xs hidden" style="color:var(--ink-soft)">Memproses…</span>
+        <span id="submit-status" class="font-mono text-xs hidden" style="color:var(--ink-soft)">Processing...</span>
       </div>
     </form>
 
     <footer class="mt-10 text-xs font-mono" style="color:var(--ink-soft)">
-      File diproses sementara di server dan langsung dihapus setelah hasil diunduh — tidak disimpan permanen.
+      No file or data are saved permanently
     </footer>
   </div>
 

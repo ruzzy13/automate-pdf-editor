@@ -2,7 +2,7 @@ def _to_float(value, field_name):
     try:
         return float(value)
     except (TypeError, ValueError):
-        raise ValueError(f'Nilai "{field_name}" tidak valid: {value!r} bukan angka.')
+        raise ValueError(f' "{field_name}"\'s value is not valid: {value!r} is not a number.')
 
 
 def calculate_and_print_price(price_before, first_percent, second_percent):
@@ -10,7 +10,10 @@ def calculate_and_print_price(price_before, first_percent, second_percent):
     a = _to_float(first_percent, "first_percent")
     b = _to_float(second_percent, "second_percent")
 
+    '''if a == 0:
+        raise'''
+
     if b == 0:
-        raise ZeroDivisionError('Nilai "second_percent" tidak boleh 0.')
+        raise ZeroDivisionError('Value "second_percent" can\'t be 0.')
 
     return (n * (a / 100)) / (b / 100)
