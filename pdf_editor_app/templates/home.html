@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Automate PDF Editor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/3.4.1/tailwind.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #efece4;
+    --paper-raised: #f8f6f0;
+    --ink: #21262e;
+    --ink-soft: #5b5f66;
+    --rule: #d7d2c4;
+    --redline: #b3392f;
+    --redline-soft: #f1ded9;
+    --pen: #2c5d59;
+    --pen-soft: #dde8e5;
+  }
+  body { background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; }
+  .font-display { font-family: 'Source Serif 4', serif; }
+  .font-mono { font-family: 'IBM Plex Mono', monospace; }
+
+  .paper-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    box-shadow: 0 1px 0 var(--rule), 0 12px 32px -20px rgba(33,38,46,0.35);
+  }
+  .field-input {
+    background: #fff;
+    border: 1px solid var(--rule);
+    color: var(--ink);
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: var(--pen);
+    box-shadow: 0 0 0 3px var(--pen-soft);
+  }
+  .strike { text-decoration: line-through; text-decoration-color: var(--redline); text-decoration-thickness: 2px; }
+
+  .tab-btn[aria-selected="true"] {
+    color: var(--ink);
+    border-bottom-color: var(--pen);
+  }
+  .tab-btn[aria-selected="false"] {
+    color: var(--ink-soft);
+    border-bottom-color: transparent;
+  }
+
+  .dropzone { border: 1.5px dashed var(--rule); }
+  .dropzone.drag-over { border-color: var(--pen); background: var(--pen-soft); }
+
+  ::selection { background: var(--redline-soft); }
+</style>
+</head>
+<body class="min-h-screen">
+
+  <div class="max-w-3xl mx-auto px-5 py-14 sm:py-20">
+
+    <!-- Signature header: a literal "redline edit" -->
+    <header class="mb-10">
+      <p class="font-mono text-xs tracking-widest uppercase" style="color:var(--ink-soft)">Automate PDF Editor</p>
+      <h1 class="font-display text-4xl sm:text-5xl mt-2 leading-tight">
+        <span class="strike" style="color:var(--ink-soft)">VAT 11%</span>
+        <span class="mx-2" style="color:var(--pen)">&rarr;</span>
+        <span style="color:var(--ink)">VAT 12%</span>
+      </h1>
+      <p class="mt-4 max-w-xl" style="color:var(--ink-soft)">
+        Unggah PDF, tandai bagian yang perlu diganti, lalu unduh hasil edit —
+        baik lewat penggantian teks manual maupun kalkulasi angka otomatis.
+      </p>
+    </header>
+
+    {% if form.non_field_errors %}
+      <div class="mb-6 px-4 py-3 rounded-md" style="background:var(--redline-soft); border:1px solid var(--redline); color:var(--redline)">
+        {% for error in form.non_field_errors %}
+          <p class="text-sm">{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="paper-card rounded-xl p-6 sm:p-8" id="pdf-form">
+      {% csrf_token %}
+
+      <!-- File upload -->
+      <div class="mb-8">
+        <label class="block font-display text-lg mb-2" for="id_pdf_file">Berkas PDF</label>
+        <label id="dropzone" for="id_pdf_file" class="dropzone rounded-lg flex flex-col items-center justify-center text-center py-10 px-4 cursor-pointer transition-colors">
+          <span class="font-mono text-sm" style="color:var(--ink-soft)" id="dropzone-text">
+            Klik untuk pilih file, atau seret PDF ke sini &middot; maks 15MB
+          </span>
+        </label>
+        {{ form.pdf_file }}
+        {% if form.pdf_file.errors %}
+          <p class="text-sm mt-2" style="color:var(--redline)">{{ form.pdf_file.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-6 border-b mb-6" style="border-color:var(--rule)">
+        <button type="button" class="tab-btn pb-3 border-b-2 font-medium text-sm transition-colors" data-tab="manual" aria-selected="true">
+          Find &amp; Replace manual
+        </button>
+        <button type="button" class="tab-btn pb-3 border-b-2 font-medium text-sm transition-colors" data-tab="auto" aria-selected="false">
+          Kalkulasi otomatis
+        </button>
+      </div>
+
+      <!-- Manual panel -->
+      <div id="panel-manual" class="space-y-4">
+        <p class="text-sm" style="color:var(--ink-soft)">Ganti satu bagian teks persis seperti tampilannya di PDF.</p>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="{{ form.old_text.id_for_label }}">Teks lama</label>
+          {{ form.old_text }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="{{ form.new_text.id_for_label }}">Teks baru</label>
+          {{ form.new_text }}
+        </div>
+      </div>
+
+      <!-- Auto panel -->
+      <div id="panel-auto" class="space-y-4 hidden">
+        <p class="text-sm" style="color:var(--ink-soft)">
+          Cari angka yang terletak di antara sebuah kata kunci dan simbol penutup pada baris yang sama,
+          lalu hitung ulang nilainya.
+        </p>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1" for="{{ form.before_word.id_for_label }}">Kata kunci sebelum angka</label>
+            {{ form.before_word }}
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1" for="{{ form.stop_symbol.id_for_label }}">Simbol penutup</label>
+            {{ form.stop_symbol }}
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1" for="{{ form.first_percent.id_for_label }}">Persentase pertama</label>
+            {{ form.first_percent }}
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1" for="{{ form.second_percent.id_for_label }}">Persentase kedua</label>
+            {{ form.second_percent }}
+          </div>
+        </div>
+        <p class="font-mono text-xs" style="color:var(--ink-soft)">
+          hasil = (angka &times; persen_pertama / 100) &divide; (persen_kedua / 100)
+        </p>
+      </div>
+
+      {% for field in form %}
+        {% if field.errors and field.name not in "pdf_file" %}
+          <p class="text-sm mt-1" style="color:var(--redline)">{{ field.label }}: {{ field.errors.0 }}</p>
+        {% endif %}
+      {% endfor %}
+
+      <div class="mt-8 flex items-center gap-4">
+        <button type="submit" id="submit-btn"
+          class="px-5 py-2.5 rounded-md font-medium text-sm text-white transition-opacity hover:opacity-90"
+          style="background:var(--pen)">
+          Proses &amp; unduh PDF
+        </button>
+        <span id="submit-status" class="font-mono text-xs hidden" style="color:var(--ink-soft)">Memproses…</span>
+      </div>
+    </form>
+
+    <footer class="mt-10 text-xs font-mono" style="color:var(--ink-soft)">
+      File diproses sementara di server dan langsung dihapus setelah hasil diunduh — tidak disimpan permanen.
+    </footer>
+  </div>
+
+  <script>
+    // Style Django's auto-rendered inputs to match the design tokens.
+    document.querySelectorAll('#pdf-form input[type=text], #pdf-form input[type=number]').forEach(el => {
+      el.classList.add('field-input', 'w-full', 'rounded-md', 'px-3', 'py-2', 'text-sm');
+    });
+
+    // File input: hide native control, drive it via the dropzone label.
+    const fileInput = document.getElementById('id_pdf_file');
+    const dropzoneText = document.getElementById('dropzone-text');
+    const dropzone = document.getElementById('dropzone');
+    if (fileInput) {
+      fileInput.classList.add('hidden');
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) {
+          dropzoneText.textContent = fileInput.files[0].name;
+        }
+      });
+      ['dragover', 'dragleave', 'drop'].forEach(evt => {
+        dropzone.addEventListener(evt, e => {
+          e.preventDefault();
+          dropzone.classList.toggle('drag-over', evt === 'dragover');
+        });
+      });
+      dropzone.addEventListener('drop', e => {
+        if (e.dataTransfer.files.length) {
+          fileInput.files = e.dataTransfer.files;
+          dropzoneText.textContent = e.dataTransfer.files[0].name;
+        }
+      });
+    }
+
+    // Tabs toggle
+    const tabs = document.querySelectorAll('.tab-btn');
+    const panels = { manual: document.getElementById('panel-manual'), auto: document.getElementById('panel-auto') };
+    tabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabs.forEach(b => b.setAttribute('aria-selected', 'false'));
+        btn.setAttribute('aria-selected', 'true');
+        Object.entries(panels).forEach(([key, el]) => el.classList.toggle('hidden', key !== btn.dataset.tab));
+      });
+    });
+
+    // Simple pending-state indicator 
+    document.getElementById('pdf-form').addEventListener('submit', () => {
+      document.getElementById('submit-btn').setAttribute('disabled', 'true');
+      document.getElementById('submit-status').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>

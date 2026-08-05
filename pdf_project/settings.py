@@ -17,7 +17,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-secret-key")
-DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = True
 
 
 # Quick-start development settings - unsuitable for production
@@ -27,7 +27,7 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 SECRET_KEY = 'django-insecure-+419q60ualopm#ej9mg9fus_hu9xu(e&0-5=c-cup3qskx$xl5'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 

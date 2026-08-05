@@ -148,7 +148,6 @@ def _search_flexible(page, target_text):
 
     return [], None
 
-'''
 def _diagnose_not_found(input_pdf, target_text):
     doc = fitz.open(input_pdf)
     print("\nMencari bagian dari teks")
@@ -174,7 +173,6 @@ def _diagnose_not_found(input_pdf, target_text):
         print("Sebagian teks ketemu, sebagian tidak")
     else:
         print("Tidak ada potongan yang ketemu sama sekali.")
-'''
 
 
 def replace_text_in_pdf(input_path, output_path, old_text, new_text,
@@ -218,7 +216,6 @@ def replace_at_position(input_path, output_path, page_index, rect, new_text, shr
 
     return final_output_path, count
 
-'''
 def _list_occurrences(pdf_path, target_text):
     doc = fitz.open(pdf_path)
     occurrences = []
@@ -233,7 +230,6 @@ def _list_occurrences(pdf_path, target_text):
                 occurrences.append({"index": idx, "page": page_index + 1, "rect": rect})
     doc.close()
     return occurrences, matched_variant
-'''
 
 
 _NUMBER_TOKEN_RE = re.compile(r"^[\d]{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?$|^\d+(?:[.,]\d+)?$")
@@ -385,7 +381,6 @@ def _parse_number_string(raw, value_type=float):
     return value
 
 
-'''
 def _format_number_like(raw_original, new_value):
     fmt = _detect_number_format(raw_original)
     base = f"{new_value:,.{fmt['decimals']}f}"
@@ -397,7 +392,6 @@ def _format_number_like(raw_original, new_value):
 
     return base
 
-'''
 
 def _save_pdf_safely(doc, output_path):
     try:
