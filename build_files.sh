@@ -1,3 +1,10 @@
 #!/bin/bash
+set -e
+
+echo "Installing dependencies..."
 pip install -r requirements.txt
-python manage.py collectstatic --noinput
+
+echo "Collecting static files..."
+python3 manage.py collectstatic --noinput --clear
+
+echo "Build finished."
