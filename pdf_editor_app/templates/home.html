@@ -16,7 +16,7 @@
     --rule: #d7d2c4;
     --redline: #b3392f;
     --redline-soft: #f1ded9;
-    --pen: #2c5d59;
+    --pen: #38a33e;
     --pen-soft: #dde8e5;
   }
   body { background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; }
@@ -86,7 +86,7 @@
         <label class="block font-display text-lg mb-2" for="id_pdf_file">File</label>
         <label id="dropzone" for="id_pdf_file" class="dropzone rounded-lg flex flex-col items-center justify-center text-center py-10 px-4 cursor-pointer transition-colors">
           <span class="font-mono text-sm" style="color:var(--ink-soft)" id="dropzone-text">
-            Click to choose fil or the file here &middot; Max file size 15MB
+            Click to choose file or the file here &middot; Max file size 15MB
           </span>
         </label>
         {{ form.pdf_file }}
@@ -121,8 +121,8 @@
       <!-- Auto panel -->
       <div id="panel-auto" class="space-y-4 hidden">
         <p class="text-sm" style="color:var(--ink-soft)">
-          Cari angka yang terletak di antara sebuah kata kunci dan simbol penutup pada baris yang sama,
-          lalu hitung ulang nilainya.
+          Find the number located between a keyword and the closing symbol on the same line,
+          then recalculate its value.
         </p>
         <div class="grid sm:grid-cols-2 gap-4">
           <div>

@@ -4,11 +4,25 @@ from django import forms
 
 MAX_UPLOAD_SIZE_BYTES = 15 * 1024 * 1024
 
+def validate_pdf_upload(f):
+    if not f.name.lower().endswith(".pdf"):
+        raise forms.ValidationError("File should be a PDF file.")
+    if f.size > MAX_UPLOAD_SIZE_BYTES:
+        raise forms.ValidationError("The file size exceeds the 15MB limit.")
+    return f
+
+
+class PDFUploadForm(forms.Form):
+    pdf_file = forms.FileField(label="File PDF")
+
+    def clean_pdf_file(self):
+        return validate_pdf_upload(self.cleaned_data["pdf_file"])
+
 
 class PDFProcessForm(forms.Form):
     pdf_file = forms.FileField(
         label="File PDF",
-        help_text="Maximal 15MB, format .pdf",
+        help_text="Maximal 15MB, file must be PDF file",
     )
 
     old_text = forms.CharField(
@@ -49,12 +63,7 @@ class PDFProcessForm(forms.Form):
     )
 
     def clean_pdf_file(self):
-        f = self.cleaned_data["pdf_file"]
-        if not f.name.lower().endswith(".pdf"):
-            raise forms.ValidationError("File should be a pdf.")
-        if f.size > MAX_UPLOAD_SIZE_BYTES:
-            raise forms.ValidationError("File size exceeds its limit (MAX 15 MB).")
-        return f
+         return validate_pdf_upload(self.cleaned_data["pdf_file"])
 
     def clean(self):
         cleaned = super().clean()

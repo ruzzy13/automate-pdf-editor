@@ -1,11 +1,14 @@
 import os
 import shutil
 import uuid
-from django.conf import settings
-from django.http import HttpResponse
-from django.shortcuts import render
 
-from .forms import PDFProcessForm
+import fitz
+from django.conf import settings
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render
+from django.views.decorators.http import require_POST
+
+from .forms import PDFProcessForm, PDFUploadForm
 from .services.calculator import calculate_and_print_price
 from .services import pdf_editor as pe
 
@@ -124,3 +127,60 @@ def index(request):
         form = PDFProcessForm()
 
     return render(request, "home.html", {"form": form})
+
+
+def editor(request):
+    return render(request, "editor.html")
+
+
+@require_POST
+def upload_pdf_api(request):
+    form = PDFUploadForm(request.POST, request.FILES)
+    if not form.is_valid():
+        return JsonResponse({"ok": False, "errors": form.errors}, status=400)
+
+    uploaded = form.cleaned_data["pdf_file"]
+    tmp_path = os.path.join(settings.TMP_DIR, f"{uuid.uuid4().hex}_validate.pdf")
+
+    try:
+        with open(tmp_path, "wb") as dest:
+            for chunk in uploaded.chunks():
+                dest.write(chunk)
+        try:
+            doc = fitz.open(tmp_path)
+            page_count = doc.page_count
+            doc.close()
+        except Exception:
+            return JsonResponse(
+                {"ok": False, "errors": {"pdf_file": ["PDF file can't be open"]}},
+                status=400,
+            )
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    return JsonResponse({
+        "ok": True,
+        "filename": uploaded.name,
+        "page_count": page_count,
+        "size": uploaded.size,
+    })
+
+
+@require_POST
+def replace_pdf_api(request):
+    form = PDFProcessForm(request.POST, request.FILES)
+    if not form.is_valid():
+        return JsonResponse({"ok": False, "errors": form.errors}, status=400)
+
+    try:
+        pdf_bytes, download_name = _process_pdf(form.cleaned_data, request.FILES["pdf_file"])
+    except Exception as exc:  
+        return JsonResponse({"ok": False, "errors": {"__all__": [str(exc)]}}, status=422)
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'inline; filename="{download_name}"'
+    response["X-Filename"] = download_name
+    response["Access-Control-Expose-Headers"] = "X-Filename"
+    response["Content-Length"] = str(len(pdf_bytes))
+    return response
