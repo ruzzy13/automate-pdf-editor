@@ -19,6 +19,12 @@
 
   const el = {
     uploadOverlay: document.getElementById("upload-overlay"),
+    uploadStepDropzone: document.getElementById("upload-step-dropzone"),
+    uploadStepConfirm: document.getElementById("upload-step-confirm"),
+    confirmFilename: document.getElementById("confirm-filename"),
+    confirmMeta: document.getElementById("confirm-meta"),
+    confirmNextBtn: document.getElementById("confirm-next-btn"),
+    confirmCancelBtn: document.getElementById("confirm-cancel-btn"),
     dropzone: document.getElementById("dropzone"),
     fileInput: document.getElementById("file-input"),
     newFileInput: document.getElementById("new-file-input"),
@@ -49,6 +55,10 @@
     tabButtons: document.querySelectorAll(".tab-btn"),
     panelManual: document.getElementById("panel-manual"),
     panelAuto: document.getElementById("panel-auto"),
+    oldTextInput: document.getElementById("old_text"),
+    beforeWordInput: document.getElementById("before_word"),
+    stopSymbolInput: document.getElementById("stop_symbol"),
+    autoHint: document.getElementById("auto-hint"),
     applyBtn: document.getElementById("apply-btn"),
     applySpinner: document.getElementById("apply-spinner"),
     formErrors: document.getElementById("form-errors"),
@@ -72,7 +82,11 @@
     matches: [],            // [{pageNum, item}]
     matchIndex: -1,
     observer: null,
+    pendingFile: null,      // File that passed validation but user hasn't confirmed "Next" yet
   };
+
+  const VIEW_PARAM = "view";
+  const VIEW_EDITOR = "editor";
 
   function getCsrfToken() {
     const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
@@ -109,6 +123,19 @@
     });
   }
 
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+  }
+
+  function showUploadStep(step) {
+    // step: "dropzone" | "confirm"
+    el.uploadOverlay.classList.remove("hidden");
+    el.uploadStepDropzone.classList.toggle("hidden", step !== "dropzone");
+    el.uploadStepConfirm.classList.toggle("hidden", step !== "confirm");
+  }
+
   async function handleNewFile(file) {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       showToast("File must be a .pdf", true);
@@ -119,16 +146,49 @@
       return;
     }
 
+    let validated;
     try {
-      await validateOnServer(file);
+      validated = await validateOnServer(file);
     } catch (err) {
       showToast(err.message || "Invalid file", true);
       return;
     }
 
+    // File is valid — hold onto it and show a confirmation step instead of
+    // jumping straight into the editor. The user explicitly presses "Next".
+    state.pendingFile = file;
+    el.confirmFilename.textContent = file.name;
+    el.confirmMeta.textContent = validated.page_count + " halaman \u00b7 " + formatFileSize(file.size);
+    showUploadStep("confirm");
+  }
+
+  async function confirmUploadAndEnterEditor() {
+    if (!state.pendingFile) return;
+    const file = state.pendingFile;
+
     state.filename = file.name;
     await loadPdf(file);
     el.uploadOverlay.classList.add("hidden");
+
+    // Reflect the transition in the URL (like moving to a new page) so the
+    // back button and a bookmark/refresh both make sense, without doing a
+    // real full-page reload that would drop the in-memory PDF.
+    const url = new URL(window.location.href);
+    if (url.searchParams.get(VIEW_PARAM) !== VIEW_EDITOR) {
+      url.searchParams.set(VIEW_PARAM, VIEW_EDITOR);
+      history.pushState({ view: VIEW_EDITOR }, "", url);
+    }
+  }
+
+  function cancelPendingUpload() {
+    state.pendingFile = null;
+    el.fileInput.value = "";
+    if (state.pdfDoc) {
+      // Already had a PDF open (this was a "Change file" attempt) — go back to it.
+      el.uploadOverlay.classList.add("hidden");
+    } else {
+      showUploadStep("dropzone");
+    }
   }
 
   async function validateOnServer(file) {
@@ -424,6 +484,12 @@
         btn.setAttribute("aria-selected", "true");
         el.panelManual.classList.toggle("hidden", btn.dataset.tab !== "manual");
         el.panelAuto.classList.toggle("hidden", btn.dataset.tab !== "auto");
+
+        state.matches = [];
+        state.matchIndex = -1;
+        clearHighlights();
+        updateMatchCountLabel();
+        setAutoHint("", null);
       });
     });
   }
@@ -545,6 +611,148 @@
     el.downloadBtn.addEventListener("click", downloadCurrentPdf);
   }
 
+  function bindConfirmStep() {
+    el.confirmNextBtn.addEventListener("click", confirmUploadAndEnterEditor);
+    el.confirmCancelBtn.addEventListener("click", cancelPendingUpload);
+  }
+
+  function bindHistoryNav() {
+    window.addEventListener("popstate", () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get(VIEW_PARAM) !== VIEW_EDITOR && state.pdfDoc) {
+        // User pressed back out of the editor view — show the upload overlay
+        // again. The PDF stays in memory so pressing forward works too.
+        el.uploadOverlay.classList.remove("hidden");
+        showUploadStep("dropzone");
+      } else if (params.get(VIEW_PARAM) === VIEW_EDITOR && state.pdfDoc) {
+        el.uploadOverlay.classList.add("hidden");
+      }
+    });
+  }
+
+  function cleanStaleViewParam() {
+    // If the page was hard-refreshed while ?view=editor was in the URL, we
+    // no longer have the PDF bytes in memory (that only ever lives in the
+    // browser tab), so drop back to a clean upload URL.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get(VIEW_PARAM) === VIEW_EDITOR) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete(VIEW_PARAM);
+      history.replaceState({}, "", url);
+    }
+  }
+
+  function bindManualHighlight() {
+    if (!el.oldTextInput) return;
+    let debounce;
+    el.oldTextInput.addEventListener("input", () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        if (state.pdfDoc) runSearch(el.oldTextInput.value);
+      }, 350);
+    });
+  }
+
+  // ---- Automatic (calculation) tab: client-side preview of the number ----
+  // that will be found & recalculated. This mirrors the server-side
+  // find_number_between_words() logic closely enough for a visual preview;
+  // the actual value used for calculation is always re-derived on the
+  // server at submit time, so small mismatches here are cosmetic only.
+  const AUTO_NUMBER_RE = /^\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?$|^\d+(?:[.,]\d+)?$/;
+
+  function groupItemsIntoLines(items, yTolerance) {
+    const lines = [];
+    items.forEach((item) => {
+      const yCenter = item.transform[5];
+      let line = lines.find((l) => Math.abs(l.y - yCenter) <= yTolerance);
+      if (!line) {
+        line = { y: yCenter, items: [] };
+        lines.push(line);
+      }
+      line.items.push(item);
+    });
+    lines.forEach((l) => l.items.sort((a, b) => a.transform[4] - b.transform[4]));
+    return lines;
+  }
+
+  async function findAutoNumberClient(beforeWord, stopSymbol) {
+    if (!state.pdfDoc || !beforeWord || !stopSymbol) return null;
+    const needle = beforeWord.trim().toLowerCase();
+
+    for (let pageNum = 1; pageNum <= state.totalPages; pageNum++) {
+      const items = await getTextItems(pageNum);
+      const lines = groupItemsIntoLines(items, 3);
+
+      for (const line of lines) {
+        const bwIndex = line.items.findIndex((it) => (it.str || "").trim().toLowerCase() === needle);
+        if (bwIndex === -1) continue;
+
+        let candidate = null;
+        let foundSymbolAfter = false;
+        for (let i = bwIndex + 1; i < line.items.length; i++) {
+          const text = (line.items[i].str || "").trim();
+          if (!candidate) {
+            if (AUTO_NUMBER_RE.test(text)) candidate = line.items[i];
+            continue;
+          }
+          if (text.includes(stopSymbol)) {
+            foundSymbolAfter = true;
+            break;
+          }
+        }
+
+        if (candidate && foundSymbolAfter) {
+          return { pageNum, item: candidate };
+        }
+      }
+    }
+    return null;
+  }
+
+  function setAutoHint(message, kind) {
+    if (!el.autoHint) return;
+    el.autoHint.textContent = message || "";
+    el.autoHint.classList.toggle("hint-found", kind === "found");
+    el.autoHint.classList.toggle("hint-notfound", kind === "notfound");
+  }
+
+  async function updateAutoPreview() {
+    if (!state.pdfDoc) return;
+    const beforeWord = el.beforeWordInput.value;
+    const stopSymbol = el.stopSymbolInput.value || "%";
+
+    if (!beforeWord.trim()) {
+      clearHighlights();
+      setAutoHint("", null);
+      return;
+    }
+
+    const hit = await findAutoNumberClient(beforeWord, stopSymbol);
+    if (hit) {
+      state.matches = [hit];
+      state.matchIndex = 0;
+      await highlightCurrentMatch();
+      setAutoHint("Ditemukan: " + hit.item.str.trim(), "found");
+    } else {
+      state.matches = [];
+      state.matchIndex = -1;
+      clearHighlights();
+      updateMatchCountLabel();
+      setAutoHint("Angka tidak ditemukan untuk kata kunci ini.", "notfound");
+    }
+  }
+
+  function bindAutoFinder() {
+    if (!el.beforeWordInput || !el.stopSymbolInput) return;
+    let debounce;
+    const trigger = () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(updateAutoPreview, 350);
+    };
+    el.beforeWordInput.addEventListener("input", trigger);
+    el.stopSymbolInput.addEventListener("input", trigger);
+  }
+
   function init() {
     bindUploadZone(el.fileInput, el.dropzone);
     if (el.newFileInput) {
@@ -554,6 +762,11 @@
     }
     bindToolbar();
     bindTabs();
+    bindConfirmStep();
+    bindHistoryNav();
+    bindManualHighlight();
+    bindAutoFinder();
+    cleanStaleViewParam();
     el.replaceForm.addEventListener("submit", submitReplace);
   }
 

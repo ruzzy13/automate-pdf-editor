@@ -302,6 +302,17 @@ html, body {
   margin: 0 auto 18px;
   color: var(--ink-faint);
 }
+.icon-success { color: var(--pen); }
+
+.confirm-card {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  box-shadow: var(--shadow-lift);
+}
+
+#auto-hint.hint-found { color: var(--pen); }
+#auto-hint.hint-notfound { color: var(--redline); }
+#auto-hint:empty { display: none; }
 .dropzone {
   border: 1.5px dashed var(--rule);
   background: var(--paper-raised);

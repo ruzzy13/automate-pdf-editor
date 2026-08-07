@@ -94,11 +94,11 @@
           <div id="panel-manual" class="space-y-3">
             <div>
               <label class="block text-xs font-medium mb-1" for="old_text">Old text</label>
-              <input type="text" name="old_text" id="old_text" class="field-input" placeholder='e.g. "Jakarta, January 1, 2026"'>
+              <input type="text" name="old_text" id="old_text" class="field-input" placeholder='e.g. "Hello"'>
             </div>
             <div>
               <label class="block text-xs font-medium mb-1" for="new_text">New text</label>
-              <input type="text" name="new_text" id="new_text" class="field-input" placeholder='e.g. "Jakarta, August 4, 2026"'>
+              <input type="text" name="new_text" id="new_text" class="field-input" placeholder='e.g. "Hi"'>
             </div>
           </div>
 
@@ -124,6 +124,8 @@
                 <input type="number" step="any" name="second_percent" id="second_percent" class="field-input" placeholder="12">
               </div>
             </div>
+
+            <p id="auto-hint" class="text-xs mt-1"></p>
           </div>
 
           <div id="form-errors" class="mt-3"></div>
@@ -140,16 +142,34 @@
   <!-- ===================== Upload overlay (empty state) ===================== -->
   <div id="upload-overlay">
     <div class="max-w-md w-full mx-4">
-      <label id="dropzone" for="file-input" class="dropzone rounded-lg flex flex-col items-center justify-center text-center cursor-pointer py-14 px-6">
-        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M12 16V4m0 0L7 9m5-5l5 5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Step 1: dropzone -->
+      <div id="upload-step-dropzone">
+        <label id="dropzone" for="file-input" class="dropzone rounded-lg flex flex-col items-center justify-center text-center cursor-pointer py-14 px-6">
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 16V4m0 0L7 9m5-5l5 5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p class="font-mono text-xs tracking-widest uppercase mb-2" style="color:var(--ink-soft)">Automate PDF Editor</p>
+          <p class="font-display text-lg mb-2">Drop your PDF here</p>
+          <p class="text-xs" style="color:var(--ink-soft)" id="dropzone-text">or click to browse &middot; Max file size 15MB</p>
+        </label>
+        <input type="file" id="file-input" accept="application/pdf" class="hidden">
+      </div>
+
+      <!-- Step 2: confirmation, shown after a file passes validation -->
+      <div id="upload-step-confirm" class="confirm-card rounded-lg text-center py-10 px-6 hidden">
+        <svg class="upload-icon icon-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M8 12.5l2.5 2.5L16 9.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <p class="font-mono text-xs tracking-widest uppercase mb-2" style="color:var(--ink-soft)">Automate PDF Editor</p>
-        <p class="font-display text-lg mb-2">Drop your PDF here</p>
-        <p class="text-xs" style="color:var(--ink-soft)" id="dropzone-text">or click to browse &middot; Max file size 15MB</p>
-      </label>
-      <input type="file" id="file-input" accept="application/pdf" class="hidden">
+        <p class="font-mono text-xs tracking-widest uppercase mb-2" style="color:var(--ink-soft)">File berhasil diupload</p>
+        <p class="font-display text-lg mb-1 truncate" id="confirm-filename">document.pdf</p>
+        <p class="text-xs mb-6" id="confirm-meta" style="color:var(--ink-soft)"></p>
+        <button type="button" id="confirm-next-btn" class="tb-primary w-full">Lanjut ke Editor &rarr;</button>
+        <button type="button" id="confirm-cancel-btn" class="tb-btn w-full mt-2">Pilih file lain</button>
+      </div>
+
     </div>
   </div>
 
@@ -161,6 +181,6 @@
     window.API_UPLOAD_URL = "{% url 'pdf_editor_app:upload_pdf_api' %}";
     window.API_REPLACE_URL = "{% url 'pdf_editor_app:replace_pdf_api' %}";
   </script>
-  <script src="{% static 'pdf_editor_app/js/editor.js' %}"></script>
+  <script src="{% static 'js/editor.js' %}"></script>
 </body>
 </html>
