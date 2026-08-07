@@ -14,6 +14,6 @@ def calculate_and_print_price(price_before, first_percent, second_percent):
         raise'''
 
     if b == 0:
-        raise ZeroDivisionError('Value "second_percent" can\'t be 0.')
+        raise ZeroDivisionError('Percent value can\'t be 0.')
 
     return (n * (a / 100)) / (b / 100)

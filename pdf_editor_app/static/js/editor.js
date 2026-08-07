@@ -6,6 +6,15 @@
   const ZOOM_STEP = 0.15;
   const THUMB_SCALE = 0.22;
 
+  if (typeof pdfjsLib === "undefined") {
+    const banner = document.createElement("div");
+    banner.id = "fatal-banner";
+    banner.textContent =
+      "Failed to load the PDF engine (pdf.js) from the CDN. Check your internet connection and reload the page.";
+    document.body.prepend(banner);
+    return;
+  }
+
   pdfjsLib.GlobalWorkerOptions.workerSrc = window.PDFJS_WORKER_SRC;
 
   const el = {
@@ -51,16 +60,16 @@
   };
 
   const state = {
-    pdfDoc: null,           
-    pageCache: new Map(),   
-    textCache: new Map(),   
+    pdfDoc: null,           // PDFDocumentProxy
+    pageCache: new Map(),   // pageNum -> PDFPageProxy
+    textCache: new Map(),   // pageNum -> textContent.items
     totalPages: 0,
     currentPage: 1,
     zoom: 1.0,
-    currentPdfBlob: null,   
+    currentPdfBlob: null,   // Blob/File terkini
     filename: "document.pdf",
-    renderGeneration: 0,    
-    matches: [],            
+    renderGeneration: 0,    // used to cancel a stale render when zoom changes rapidly
+    matches: [],            // [{pageNum, item}]
     matchIndex: -1,
     observer: null,
   };
@@ -102,18 +111,18 @@
 
   async function handleNewFile(file) {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
-      showToast("File harus berformat .pdf", true);
+      showToast("File must be a .pdf", true);
       return;
     }
     if (file.size > 15 * 1024 * 1024) {
-      showToast("Ukuran file melebihi batas 15MB", true);
+      showToast("File size exceeds the 15MB limit", true);
       return;
     }
 
     try {
       await validateOnServer(file);
     } catch (err) {
-      showToast(err.message || "File tidak valid", true);
+      showToast(err.message || "Invalid file", true);
       return;
     }
 
@@ -133,7 +142,7 @@
     const data = await resp.json();
     if (!data.ok) {
       const firstError = Object.values(data.errors || {})[0];
-      throw new Error(Array.isArray(firstError) ? firstError[0] : "File tidak valid.");
+      throw new Error(Array.isArray(firstError) ? firstError[0] : "Invalid file.");
     }
     return data;
   }
@@ -180,7 +189,7 @@
   async function computeFitWidthScale() {
     const page = await getPage(1);
     const viewport = page.getViewport({ scale: 1 });
-    const containerWidth = el.canvasScroll.clientWidth - 48; 
+    const containerWidth = el.canvasScroll.clientWidth - 48; // left+right padding
     return clamp(containerWidth / viewport.width, ZOOM_MIN, ZOOM_MAX);
   }
 
@@ -189,7 +198,7 @@
     el.canvasStack.innerHTML = "";
 
     for (let pageNum = 1; pageNum <= state.totalPages; pageNum++) {
-      if (generation !== state.renderGeneration) return; 
+      if (generation !== state.renderGeneration) return; // superseded by a newer zoom re-render
 
       const page = await getPage(pageNum);
       const viewport = page.getViewport({ scale });
@@ -202,7 +211,7 @@
 
       const label = document.createElement("div");
       label.className = "page-label font-mono";
-      label.textContent = "Halaman " + pageNum;
+      label.textContent = "Page " + pageNum;
       wrapper.appendChild(label);
 
       const canvas = document.createElement("canvas");
@@ -341,7 +350,7 @@
       state.matchIndex = 0;
       await highlightCurrentMatch();
     } else {
-      showToast('Tidak ada hasil untuk "' + query + '"', true);
+      showToast('No results for "' + query + '"', true);
     }
   }
 
@@ -445,7 +454,7 @@
   async function submitReplace(e) {
     e.preventDefault();
     if (!state.currentPdfBlob) {
-      showToast("Unggah PDF terlebih dahulu.", true);
+      showToast("Please upload a PDF first.", true);
       return;
     }
 
@@ -465,7 +474,7 @@
       if (!resp.ok) {
         const data = await resp.json();
         renderFormErrors(data.errors);
-        showToast("Gagal memproses PDF.", true);
+        showToast("Failed to process PDF.", true);
         return;
       }
 
@@ -473,13 +482,13 @@
       const newFilename = resp.headers.get("X-Filename") || state.filename;
       state.filename = newFilename;
 
-      await loadPdf(blob, true);
-      showToast("Berhasil diperbarui.");
+      await loadPdf(blob, true); // true = keep the current page & zoom level
+      showToast("Updated successfully.");
       el.replaceForm.reset();
       const stopSymbolInput = document.getElementById("stop_symbol");
       if (stopSymbolInput) stopSymbolInput.value = "%";
     } catch (err) {
-      showToast("Terjadi kesalahan jaringan.", true);
+      showToast("A network error occurred.", true);
     } finally {
       setApplyLoading(false);
     }

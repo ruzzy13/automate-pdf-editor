@@ -67,8 +67,8 @@ def _process_pdf(cleaned_data, uploaded_file):
             )
             if auto_result is None and not has_manual:
                 raise ValueError(
-                    f'There are no numbers are found between "{before_word}" and "{stop_symbol}", '
-                    f"or value can\'t be calculated."
+                    f'No number was found between "{before_word}" and "{stop_symbol}", '
+                    f"or that value could not be calculated."
                 )
 
         if has_manual and auto_result:
@@ -84,6 +84,7 @@ def _process_pdf(cleaned_data, uploaded_file):
                     auto_result["replacement_str"],
                 )
             else:
+                # The automatic-mode number is no longer found after the manual replace -> keep the manual-only result.
                 shutil.copyfile(manual_path, output_path)
 
         elif has_manual:
@@ -95,7 +96,7 @@ def _process_pdf(cleaned_data, uploaded_file):
                 auto_result["page_index"], auto_result["rect"], auto_result["replacement_str"],
             )
         else:
-            raise ValueError("No calculation can be executed with the given inputs.")
+            raise ValueError("No operation could be run with the input provided.")
 
         with open(output_path, "rb") as f:
             pdf_bytes = f.read()
@@ -117,7 +118,7 @@ def index(request):
             try:
                 pdf_bytes, download_name = _process_pdf(form.cleaned_data, request.FILES["pdf_file"])
             except Exception as exc:  
-                form.add_error(None, f"Gagal memproses PDF: {exc}")
+                form.add_error(None, f"Failed to process PDF: {exc}")
             else:
                 response = HttpResponse(pdf_bytes, content_type="application/pdf")
                 response["Content-Disposition"] = f'attachment; filename="{download_name}"'
@@ -126,8 +127,7 @@ def index(request):
     else:
         form = PDFProcessForm()
 
-    return render(request, "home.html", {"form": form})
-
+    return render(request, "pdf_editor_app/index.html", {"form": form})
 
 def editor(request):
     return render(request, "editor.html")
@@ -152,7 +152,7 @@ def upload_pdf_api(request):
             doc.close()
         except Exception:
             return JsonResponse(
-                {"ok": False, "errors": {"pdf_file": ["PDF file can't be open"]}},
+                {"ok": False, "errors": {"pdf_file": ["Could not open the file as a PDF (it may be corrupted)."]}},
                 status=400,
             )
     finally:
@@ -175,7 +175,7 @@ def replace_pdf_api(request):
 
     try:
         pdf_bytes, download_name = _process_pdf(form.cleaned_data, request.FILES["pdf_file"])
-    except Exception as exc:  
+    except Exception as exc: 
         return JsonResponse({"ok": False, "errors": {"__all__": [str(exc)]}}, status=422)
 
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
