@@ -56,6 +56,10 @@
     panelManual: document.getElementById("panel-manual"),
     panelAuto: document.getElementById("panel-auto"),
     oldTextInput: document.getElementById("old_text"),
+    occurrencePanel: document.getElementById("occurrence-panel"),
+    occurrenceList: document.getElementById("occurrence-list"),
+    occurrenceToggleAll: document.getElementById("occurrence-toggle-all"),
+    occurrenceIndicesInput: document.getElementById("occurrence_indices_input"),
     beforeWordInput: document.getElementById("before_word"),
     stopSymbolInput: document.getElementById("stop_symbol"),
     autoHint: document.getElementById("auto-hint"),
@@ -83,6 +87,9 @@
     matchIndex: -1,
     observer: null,
     pendingFile: null,      // File that passed validation but user hasn't confirmed "Next" yet
+    occurrences: [],        // [{index, page, rect:[x0,y0,x1,y1]}] from the server, for old_text
+    occurrenceSelected: new Set(),
+    occurrenceCurrent: null,
   };
 
   const VIEW_PARAM = "view";
@@ -154,8 +161,6 @@
       return;
     }
 
-    // File is valid — hold onto it and show a confirmation step instead of
-    // jumping straight into the editor. The user explicitly presses "Next".
     state.pendingFile = file;
     el.confirmFilename.textContent = file.name;
     el.confirmMeta.textContent = validated.page_count + " halaman \u00b7 " + formatFileSize(file.size);
@@ -170,9 +175,6 @@
     await loadPdf(file);
     el.uploadOverlay.classList.add("hidden");
 
-    // Reflect the transition in the URL (like moving to a new page) so the
-    // back button and a bookmark/refresh both make sense, without doing a
-    // real full-page reload that would drop the in-memory PDF.
     const url = new URL(window.location.href);
     if (url.searchParams.get(VIEW_PARAM) !== VIEW_EDITOR) {
       url.searchParams.set(VIEW_PARAM, VIEW_EDITOR);
@@ -184,7 +186,6 @@
     state.pendingFile = null;
     el.fileInput.value = "";
     if (state.pdfDoc) {
-      // Already had a PDF open (this was a "Change file" attempt) — go back to it.
       el.uploadOverlay.classList.add("hidden");
     } else {
       showUploadStep("dropzone");
@@ -222,6 +223,7 @@
     state.matches = [];
     state.matchIndex = -1;
     updateMatchCountLabel();
+    resetOccurrenceState();
 
     el.pageCountLabel.textContent = "/ " + state.totalPages;
     el.filenameLabel.textContent = state.filename;
@@ -368,6 +370,7 @@
     goToPage(state.currentPage, "auto");
     setupIntersectionObserver();
     syncZoomUi();
+    if (state.occurrences.length) drawOccurrenceHighlights();
   }
 
   function syncZoomUi() {
@@ -490,6 +493,7 @@
         clearHighlights();
         updateMatchCountLabel();
         setAutoHint("", null);
+        resetOccurrenceState();
       });
     });
   }
@@ -551,6 +555,7 @@
       await loadPdf(blob, true); // true = keep the current page & zoom level
       showToast("Updated successfully.");
       el.replaceForm.reset();
+      setAutoHint("", null);
       const stopSymbolInput = document.getElementById("stop_symbol");
       if (stopSymbolInput) stopSymbolInput.value = "%";
     } catch (err) {
@@ -642,22 +647,157 @@
     }
   }
 
-  function bindManualHighlight() {
+  function clearOccurrenceHighlights() {
+    document.querySelectorAll(".occurrence-highlight").forEach((n) => n.remove());
+  }
+
+  function resetOccurrenceState() {
+    state.occurrences = [];
+    state.occurrenceSelected = new Set();
+    state.occurrenceCurrent = null;
+    if (el.occurrencePanel) el.occurrencePanel.classList.add("hidden");
+    if (el.occurrenceIndicesInput) el.occurrenceIndicesInput.value = "";
+    if (el.occurrenceList) el.occurrenceList.innerHTML = "";
+    clearOccurrenceHighlights();
+  }
+
+  function syncOccurrenceHiddenInput() {
+    if (!el.occurrenceIndicesInput) return;
+    el.occurrenceIndicesInput.value = Array.from(state.occurrenceSelected)
+      .sort((a, b) => a - b)
+      .join(",");
+  }
+
+  function updateOccurrenceToggleLabel() {
+    if (!el.occurrenceToggleAll) return;
+    const allSelected = state.occurrenceSelected.size === state.occurrences.length;
+    el.occurrenceToggleAll.textContent = allSelected ? "   Deselect all" : "   Select all";
+  }
+
+  function drawOccurrenceHighlights() {
+    clearOccurrenceHighlights();
+    state.occurrences.forEach((occ) => {
+      const wrapper = el.canvasStack.querySelector('[data-page-number="' + occ.page + '"]');
+      if (!wrapper) return;
+
+      const [x0, y0, x1, y1] = occ.rect;
+      const isSelected = state.occurrenceSelected.has(occ.index);
+      const isCurrent = occ.index === state.occurrenceCurrent;
+
+      const box = document.createElement("div");
+      box.className =
+        "occurrence-highlight search-highlight" +
+        (isCurrent ? " current" : "") +
+        (!isSelected ? " excluded" : "");
+      box.style.left = x0 * state.zoom + "px";
+      box.style.top = y0 * state.zoom + "px";
+      box.style.width = Math.max((x1 - x0) * state.zoom, 4) + "px";
+      box.style.height = Math.max((y1 - y0) * state.zoom, 4) + "px";
+      wrapper.appendChild(box);
+    });
+  }
+
+  function renderOccurrenceList() {
+    if (!el.occurrenceList) return;
+    el.occurrenceList.innerHTML = "";
+
+    state.occurrences.forEach((occ) => {
+      const row = document.createElement("div");
+      row.className = "occurrence-item" + (occ.index === state.occurrenceCurrent ? " current" : "");
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = state.occurrenceSelected.has(occ.index);
+      checkbox.addEventListener("click", (e) => e.stopPropagation());
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) state.occurrenceSelected.add(occ.index);
+        else state.occurrenceSelected.delete(occ.index);
+        syncOccurrenceHiddenInput();
+        updateOccurrenceToggleLabel();
+        drawOccurrenceHighlights();
+      });
+
+      const label = document.createElement("span");
+      label.textContent = "#" + occ.index + " \u00b7 Hal " + occ.page;
+
+      row.appendChild(checkbox);
+      row.appendChild(label);
+      row.addEventListener("click", () => {
+        state.occurrenceCurrent = occ.index;
+        goToPage(occ.page, "smooth");
+        drawOccurrenceHighlights();
+        renderOccurrenceList();
+      });
+
+      el.occurrenceList.appendChild(row);
+    });
+
+    updateOccurrenceToggleLabel();
+  }
+
+  async function fetchOccurrences(oldText) {
+    const fd = new FormData();
+    fd.append("pdf_file", state.currentPdfBlob, state.filename);
+    fd.append("old_text", oldText);
+    const resp = await fetch(window.API_OCCURRENCES_URL, {
+      method: "POST",
+      headers: { "X-CSRFToken": getCsrfToken() },
+      body: fd,
+    });
+    return resp.json();
+  }
+
+  async function updateOccurrencePreview() {
+    const oldText = el.oldTextInput.value.trim();
+    if (!oldText || !state.currentPdfBlob) {
+      resetOccurrenceState();
+      return;
+    }
+
+    let data;
+    try {
+      data = await fetchOccurrences(oldText);
+    } catch (err) {
+      return; // Silent on preview failures — real errors surface at submit time.
+    }
+    if (!data.ok) return;
+
+    state.occurrences = data.occurrences || [];
+    state.occurrenceSelected = new Set(state.occurrences.map((o) => o.index));
+    state.occurrenceCurrent = state.occurrences.length ? state.occurrences[0].index : null;
+    syncOccurrenceHiddenInput();
+
+    if (el.occurrencePanel) {
+      el.occurrencePanel.classList.toggle("hidden", state.occurrences.length <= 1);
+    }
+
+    renderOccurrenceList();
+    drawOccurrenceHighlights();
+
+    if (state.occurrences.length) {
+      goToPage(state.occurrences[0].page, "smooth");
+    }
+  }
+
+  function bindOccurrencePicker() {
     if (!el.oldTextInput) return;
     let debounce;
     el.oldTextInput.addEventListener("input", () => {
       clearTimeout(debounce);
-      debounce = setTimeout(() => {
-        if (state.pdfDoc) runSearch(el.oldTextInput.value);
-      }, 350);
+      debounce = setTimeout(updateOccurrencePreview, 450);
     });
+
+    if (el.occurrenceToggleAll) {
+      el.occurrenceToggleAll.addEventListener("click", () => {
+        const allSelected = state.occurrenceSelected.size === state.occurrences.length;
+        state.occurrenceSelected = new Set(allSelected ? [] : state.occurrences.map((o) => o.index));
+        syncOccurrenceHiddenInput();
+        renderOccurrenceList();
+        drawOccurrenceHighlights();
+      });
+    }
   }
 
-  // ---- Automatic (calculation) tab: client-side preview of the number ----
-  // that will be found & recalculated. This mirrors the server-side
-  // find_number_between_words() logic closely enough for a visual preview;
-  // the actual value used for calculation is always re-derived on the
-  // server at submit time, so small mismatches here are cosmetic only.
   const AUTO_NUMBER_RE = /^\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?$|^\d+(?:[.,]\d+)?$/;
 
   function groupItemsIntoLines(items, yTolerance) {
@@ -764,7 +904,7 @@
     bindTabs();
     bindConfirmStep();
     bindHistoryNav();
-    bindManualHighlight();
+    bindOccurrencePicker();
     bindAutoFinder();
     cleanStaleViewParam();
     el.replaceForm.addEventListener("submit", submitReplace);

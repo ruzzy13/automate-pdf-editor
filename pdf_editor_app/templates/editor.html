@@ -98,8 +98,19 @@
             </div>
             <div>
               <label class="block text-xs font-medium mb-1" for="new_text">New text</label>
-              <input type="text" name="new_text" id="new_text" class="field-input" placeholder='e.g. "Hi"'>
+              <input type="text" name="new_text" id="new_text" class="field-input" placeholder='e.g. "Hei"'>
             </div>
+
+            <div id="occurrence-panel" class="hidden">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium">Matches found</span>
+                <button type="button" id="occurrence-toggle-all" class="occurrence-toggle-btn">Deselect all</button>
+              </div>
+              <div id="occurrence-list" class="space-y-1"></div>
+              <p class="text-xs mt-2" style="color:var(--ink-soft)">Check the items you want to replace. Click a row to jump to and view its location on the page..</p>
+            </div>
+
+            <input type="hidden" name="occurrence_indices" id="occurrence_indices_input">
           </div>
 
           <div id="panel-auto" class="space-y-3 hidden">
@@ -179,6 +190,7 @@
   <script>
     window.PDFJS_WORKER_SRC = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     window.API_UPLOAD_URL = "{% url 'pdf_editor_app:upload_pdf_api' %}";
+    window.API_OCCURRENCES_URL = "{% url 'pdf_editor_app:list_occurrences_api' %}";
     window.API_REPLACE_URL = "{% url 'pdf_editor_app:replace_pdf_api' %}";
   </script>
   <script src="{% static 'js/editor.js' %}"></script>

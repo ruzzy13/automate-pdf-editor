@@ -13,6 +13,22 @@ from .services.calculator import calculate_and_print_price
 from .services import pdf_editor as pe
 
 
+def _parse_occurrence_indices(raw):
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    indices = set()
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            indices.add(int(part))
+        except ValueError:
+            continue
+    return indices or None
+
+
 def _prepare_auto_replacement(pdf_path, before_word, stop_symbol, first_percent, second_percent):
     auto_hit = pe.find_number_between_words(pdf_path, before_word=before_word, stop_symbol=stop_symbol)
     if auto_hit is None:
@@ -54,6 +70,7 @@ def _process_pdf(cleaned_data, uploaded_file):
 
     has_manual = cleaned_data.get("has_manual", False)
     has_auto = cleaned_data.get("has_auto", False)
+    occurrence_indices = _parse_occurrence_indices(cleaned_data.get("occurrence_indices"))
 
     try:
         with open(input_path, "wb") as dest:
@@ -72,7 +89,7 @@ def _process_pdf(cleaned_data, uploaded_file):
                 )
 
         if has_manual and auto_result:
-            pe.replace_text_in_pdf(input_path, manual_path, old_text, new_text)
+            pe.replace_text_in_pdf(input_path, manual_path, old_text, new_text, occurrence_indices=occurrence_indices)
 
             auto_hit_after_manual = pe.find_number_between_words(
                 manual_path, before_word=before_word, stop_symbol=stop_symbol
@@ -88,7 +105,7 @@ def _process_pdf(cleaned_data, uploaded_file):
                 shutil.copyfile(manual_path, output_path)
 
         elif has_manual:
-            pe.replace_text_in_pdf(input_path, output_path, old_text, new_text)
+            pe.replace_text_in_pdf(input_path, output_path, old_text, new_text, occurrence_indices=occurrence_indices)
 
         elif auto_result:
             pe.replace_at_position(
@@ -127,7 +144,7 @@ def index(request):
     else:
         form = PDFProcessForm()
 
-    return render(request, "pdf_editor_app/index.html", {"form": form})
+    return render(request, "home.html", {"form": form})
 
 def editor(request):
     return render(request, "editor.html")
@@ -165,6 +182,43 @@ def upload_pdf_api(request):
         "page_count": page_count,
         "size": uploaded.size,
     })
+
+
+@require_POST
+def list_occurrences_api(request):
+    old_text = (request.POST.get("old_text") or "").strip()
+    uploaded = request.FILES.get("pdf_file")
+
+    if not uploaded:
+        return JsonResponse({"ok": False, "errors": {"pdf_file": ["No file provided."]}}, status=400)
+    if not old_text:
+        return JsonResponse({"ok": True, "occurrences": [], "matched_variant": None})
+
+    tmp_path = os.path.join(settings.TMP_DIR, f"{uuid.uuid4().hex}_occurrences.pdf")
+    try:
+        with open(tmp_path, "wb") as dest:
+            for chunk in uploaded.chunks():
+                dest.write(chunk)
+        try:
+            occurrences, matched_variant = pe._list_occurrences(tmp_path, old_text)
+        except Exception as exc:
+            return JsonResponse(
+                {"ok": False, "errors": {"__all__": [f"Could not search the PDF: {exc}"]}}, status=422
+            )
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    serialized = [
+        {
+            "index": occ["index"],
+            "page": occ["page"],
+            "rect": [occ["rect"].x0, occ["rect"].y0, occ["rect"].x1, occ["rect"].y1],
+        }
+        for occ in occurrences
+    ]
+
+    return JsonResponse({"ok": True, "occurrences": serialized, "matched_variant": matched_variant})
 
 
 @require_POST

@@ -6,7 +6,7 @@
   --ink-soft: #5b5f66;
   --ink-faint: #9a9d9f;
   --rule: #d7d2c4;
-  --redline: #b3392f;
+  --redline: #c02e29;
   --redline-soft: #f1ded9;
   --pen: #29c02e;
   --pen-soft: #dde8e5;
@@ -282,6 +282,42 @@ html, body {
 }
 
 .strike { text-decoration: line-through; text-decoration-color: var(--redline); text-decoration-thickness: 2px; }
+
+/* --- Occurrence picker (manual replace) --- */
+#occurrence-panel {
+  margin-top: 4px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.occurrence-toggle-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--pen);
+  cursor: pointer;
+}
+.occurrence-toggle-btn:hover { text-decoration: underline; }
+
+.occurrence-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+.occurrence-item:hover { background: var(--pen-soft); }
+.occurrence-item.current { background: var(--pen-soft); color: var(--ink); font-weight: 500; }
+.occurrence-item input[type="checkbox"] { accent-color: var(--pen); cursor: pointer; }
+
+.search-highlight.excluded { opacity: .35; border-style: dashed; }
 
 /* --- Upload overlay (empty state) --- */
 #upload-overlay {
