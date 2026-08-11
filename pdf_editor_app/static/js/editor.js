@@ -583,6 +583,13 @@
       showToast("Please upload a PDF first.", true);
       return;
     }
+    
+    if (state.occurrences.length > 0 && state.occurrenceSelected.size === 0) {
+      renderFormErrors({
+        __all__: ["Select at least one match to replace, or keep them all checked to replace every occurrence."],
+      });
+      return;
+    }
 
     renderFormErrors(null);
     setApplyLoading(true);
