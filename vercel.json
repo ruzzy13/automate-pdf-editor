@@ -1,7 +1,15 @@
 {
-  "functions": {
-    "pdf_project/wsgi.py": {
-      "maxDuration": 60
+  "version": 2,
+  "builds": [
+    {
+      "src": "pdf_project/wsgi.py",
+      "use": "@vercel/python"
     }
-  }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "pdf_project/wsgi.py"
+    }
+  ]
 }
