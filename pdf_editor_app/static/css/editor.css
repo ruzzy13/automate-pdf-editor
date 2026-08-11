@@ -333,17 +333,38 @@ html, body {
   z-index: 50;
 }
 .upload-icon {
-  width: 44px;
-  height: 44px;
-  margin: 0 auto 18px;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 20px;
   color: var(--ink-faint);
 }
 .icon-success { color: var(--pen); }
+
+.upload-overlay-inner {
+  max-width: 40rem;
+}
 
 .confirm-card {
   background: var(--paper-raised);
   border: 1px solid var(--rule);
   box-shadow: var(--shadow-lift);
+  padding: 64px 56px;
+}
+.confirm-card .upload-icon { width: 64px; height: 64px; margin-top: 0; margin-bottom: 24px; }
+.confirm-card #confirm-filename { font-size: 1.3rem; margin-bottom: 12px; }
+.confirm-card #confirm-meta { font-size: .95rem; margin-bottom: 36px; }
+#confirm-next-btn {
+  height: auto;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  font-size: 15px;
+}
+#confirm-cancel-btn {
+  height: auto;
+  padding-top: 13px;
+  padding-bottom: 13px;
+  font-size: 14px;
+  margin-top: 10px;
 }
 
 #auto-hint.hint-found { color: var(--pen); }
@@ -354,6 +375,7 @@ html, body {
   background: var(--paper-raised);
   box-shadow: var(--shadow-lift);
   border-radius: 12px;
+  padding: 64px 56px;
   transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
 }
 .dropzone:hover { border-color: var(--ink-faint); transform: translateY(-1px); }

@@ -167,7 +167,10 @@
 
     state.pendingFile = file;
     el.confirmFilename.textContent = file.name;
-    el.confirmMeta.textContent = validated.page_count + " halaman \u00b7 " + formatFileSize(file.size);
+    el.confirmMeta.textContent = validated.page_count
+    if (el.confirmMeta.textContent > 1)
+      el.confirmMeta.textContent = validated.page_count + " Pages \u00b7 " + formatFileSize(file.size);
+    else el.confirmMeta.textContent = " 1 Page \u00b7 " + formatFileSize(file.size);
     showUploadStep("confirm");
   }
 
