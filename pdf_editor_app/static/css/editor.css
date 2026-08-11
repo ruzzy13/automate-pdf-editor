@@ -218,7 +218,7 @@ html, body {
   pointer-events: none;
 }
 .search-highlight.current {
-  background: rgba(62, 255, 239, 0.35);
+  background: rgba(51, 255, 119, 0.35);
   border-color: var(--pen);
 }
 
