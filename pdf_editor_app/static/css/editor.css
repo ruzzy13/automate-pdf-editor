@@ -212,13 +212,13 @@ html, body {
 /* Search highlight overlay */
 .search-highlight {
   position: absolute;
-  background: rgba(179, 57, 47, 0.28);
+  background: rgba(189, 187, 187, 0.278);
   border: 1px solid var(--redline);
   border-radius: 2px;
   pointer-events: none;
 }
 .search-highlight.current {
-  background: rgba(44, 93, 89, 0.35);
+  background: rgba(62, 255, 239, 0.35);
   border-color: var(--pen);
 }
 

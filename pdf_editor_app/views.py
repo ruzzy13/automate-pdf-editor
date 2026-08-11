@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import uuid
 
@@ -119,6 +120,7 @@ def _process_pdf(cleaned_data, uploaded_file, occurrence_indices_raw=None):
             pdf_bytes = f.read()
 
         base_name = os.path.splitext(os.path.basename(uploaded_file.name))[0]
+        base_name = re.sub(r"(?:_edited)+$", "", base_name)
         download_name = f"{base_name}_edited.pdf"
         return pdf_bytes, download_name
 
