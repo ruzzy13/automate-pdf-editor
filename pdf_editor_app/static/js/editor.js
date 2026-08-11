@@ -65,6 +65,7 @@
     autoHint: document.getElementById("auto-hint"),
     applyBtn: document.getElementById("apply-btn"),
     applySpinner: document.getElementById("apply-spinner"),
+    undoBtn: document.getElementById("undo-btn"),
     formErrors: document.getElementById("form-errors"),
 
     downloadBtn: document.getElementById("download-btn"),
@@ -90,7 +91,10 @@
     occurrences: [],        // [{index, page, rect:[x0,y0,x1,y1]}] from the server, for old_text
     occurrenceSelected: new Set(),
     occurrenceCurrent: null,
+    history: [],             // [{blob, filename}] snapshots taken before each successful replace
   };
+
+  const HISTORY_LIMIT = 20;
 
   const VIEW_PARAM = "view";
   const VIEW_EDITOR = "editor";
@@ -172,6 +176,8 @@
     const file = state.pendingFile;
 
     state.filename = file.name;
+    state.history = [];
+    refreshUndoButton();
     await loadPdf(file);
     el.uploadOverlay.classList.add("hidden");
 
@@ -501,6 +507,28 @@
   function setApplyLoading(isLoading) {
     el.applyBtn.disabled = isLoading;
     el.applySpinner.classList.toggle("hidden", !isLoading);
+    if (el.undoBtn) el.undoBtn.disabled = isLoading || state.history.length === 0;
+  }
+
+  function refreshUndoButton() {
+    if (el.undoBtn) el.undoBtn.disabled = state.history.length === 0;
+  }
+
+  function pushHistory(blob, filename) {
+    if (!blob) return;
+    state.history.push({ blob, filename });
+    if (state.history.length > HISTORY_LIMIT) state.history.shift();
+    refreshUndoButton();
+  }
+
+  async function undoLastReplace() {
+    if (!state.history.length) return;
+    const prev = state.history.pop();
+    refreshUndoButton();
+
+    state.filename = prev.filename;
+    await loadPdf(prev.blob, true); // true = keep current page & zoom level
+    showToast("Last change undone.");
   }
 
   function renderFormErrors(errors) {
@@ -531,6 +559,9 @@
     renderFormErrors(null);
     setApplyLoading(true);
 
+    const previousBlob = state.currentPdfBlob;
+    const previousFilename = state.filename;
+
     const fd = new FormData(el.replaceForm);
     fd.set("pdf_file", state.currentPdfBlob, state.filename);
 
@@ -552,6 +583,7 @@
       const newFilename = resp.headers.get("X-Filename") || state.filename;
       state.filename = newFilename;
 
+      pushHistory(previousBlob, previousFilename);
       await loadPdf(blob, true); // true = keep the current page & zoom level
       showToast("Updated successfully.");
       el.replaceForm.reset();
@@ -671,7 +703,7 @@
   function updateOccurrenceToggleLabel() {
     if (!el.occurrenceToggleAll) return;
     const allSelected = state.occurrenceSelected.size === state.occurrences.length;
-    el.occurrenceToggleAll.textContent = allSelected ? "   Deselect all" : "   Select all";
+    el.occurrenceToggleAll.textContent = allSelected ? "Deselect all" : "Select all";
   }
 
   function drawOccurrenceHighlights() {
@@ -908,6 +940,7 @@
     bindAutoFinder();
     cleanStaleViewParam();
     el.replaceForm.addEventListener("submit", submitReplace);
+    if (el.undoBtn) el.undoBtn.addEventListener("click", undoLastReplace);
   }
 
   document.addEventListener("DOMContentLoaded", init);
