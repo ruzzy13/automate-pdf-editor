@@ -348,6 +348,28 @@
     setActiveThumb(pageNum);
   }
 
+  function scrollRectIntoCenter(pageNum, topWithinWrapper, heightPx, behavior) {
+    pageNum = clamp(pageNum, 1, state.totalPages);
+    const wrapper = el.canvasStack.querySelector('[data-page-number="' + pageNum + '"]');
+    if (!wrapper) return;
+
+    const containerRect = el.canvasScroll.getBoundingClientRect();
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const currentScrollTop = el.canvasScroll.scrollTop;
+
+    const targetTopInContent = (wrapperRect.top - containerRect.top) + currentScrollTop + topWithinWrapper;
+    const targetScrollTop = targetTopInContent - (containerRect.height / 2) + (heightPx / 2);
+
+    el.canvasScroll.scrollTo({
+      top: Math.max(targetScrollTop, 0),
+      behavior: behavior || "smooth",
+    });
+
+    state.currentPage = pageNum;
+    el.pageNumInput.value = pageNum;
+    setActiveThumb(pageNum);
+  }
+
   function setupIntersectionObserver() {
     if (state.observer) state.observer.disconnect();
     state.observer = new IntersectionObserver(
@@ -376,6 +398,7 @@
     goToPage(state.currentPage, "auto");
     setupIntersectionObserver();
     syncZoomUi();
+    if (state.matches.length) await renderHighlightsForVisiblePages();
     if (state.occurrences.length) drawOccurrenceHighlights();
   }
 
@@ -477,13 +500,15 @@
     box.style.width = Math.max(width, 4) + "px";
     box.style.height = Math.max(height, 4) + "px";
     wrapper.appendChild(box);
+
+    if (isCurrent) {
+      scrollRectIntoCenter(match.pageNum, top, Math.max(height, 4));
+    }
   }
 
   async function highlightCurrentMatch() {
     updateMatchCountLabel();
     await renderHighlightsForVisiblePages();
-    const match = state.matches[state.matchIndex];
-    if (match) goToPage(match.pageNum, "smooth");
   }
 
   function bindTabs() {
@@ -657,8 +682,6 @@
     window.addEventListener("popstate", () => {
       const params = new URLSearchParams(window.location.search);
       if (params.get(VIEW_PARAM) !== VIEW_EDITOR && state.pdfDoc) {
-        // User pressed back out of the editor view — show the upload overlay
-        // again. The PDF stays in memory so pressing forward works too.
         el.uploadOverlay.classList.remove("hidden");
         showUploadStep("dropzone");
       } else if (params.get(VIEW_PARAM) === VIEW_EDITOR && state.pdfDoc) {
@@ -668,9 +691,6 @@
   }
 
   function cleanStaleViewParam() {
-    // If the page was hard-refreshed while ?view=editor was in the URL, we
-    // no longer have the PDF bytes in memory (that only ever lives in the
-    // browser tab), so drop back to a clean upload URL.
     const params = new URLSearchParams(window.location.search);
     if (params.get(VIEW_PARAM) === VIEW_EDITOR) {
       const url = new URL(window.location.href);
@@ -724,8 +744,13 @@
       box.style.left = x0 * state.zoom + "px";
       box.style.top = y0 * state.zoom + "px";
       box.style.width = Math.max((x1 - x0) * state.zoom, 4) + "px";
-      box.style.height = Math.max((y1 - y0) * state.zoom, 4) + "px";
+      const boxHeight = Math.max((y1 - y0) * state.zoom, 4);
+      box.style.height = boxHeight + "px";
       wrapper.appendChild(box);
+
+      if (isCurrent) {
+        scrollRectIntoCenter(occ.page, y0 * state.zoom, boxHeight);
+      }
     });
   }
 
@@ -756,7 +781,6 @@
       row.appendChild(label);
       row.addEventListener("click", () => {
         state.occurrenceCurrent = occ.index;
-        goToPage(occ.page, "smooth");
         drawOccurrenceHighlights();
         renderOccurrenceList();
       });
@@ -805,10 +829,6 @@
 
     renderOccurrenceList();
     drawOccurrenceHighlights();
-
-    if (state.occurrences.length) {
-      goToPage(state.occurrences[0].page, "smooth");
-    }
   }
 
   function bindOccurrencePicker() {
