@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "nama_project_kamu/wsgi.py",
+      "src": "pdf_project/wsgi.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "nama_project_kamu/wsgi.py"
+      "dest": "pdf_project/wsgi.py"
     }
   ]
 }
