@@ -1,24 +1,7 @@
 {
-  "builds": [
-    {
-      "src": "pdf_project/wsgi.py",
-      "use": "@vercel/python",
-      "config": { "maxLambdaSize": "50mb", 
-                  "runtime": "python3.12" }
-    },
-    {
-      "src": "build_files.sh",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "staticfiles" }
+  "functions": {
+    "pdf_project/wsgi.py": {
+      "maxDuration": 60
     }
-  ],
-  "routes": [
-    { "src": "/static/(.*)",
-              "dest": "/static/$1" },
-    { "src": "/(.*)",
-              "dest": "pdf_project/wsgi.py" }
-  ],
-  "env": {
-    "VERCEL": "1"
   }
 }
