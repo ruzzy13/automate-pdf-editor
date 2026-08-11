@@ -52,7 +52,7 @@ def _prepare_auto_replacement(pdf_path, before_word, stop_symbol, first_percent,
     }
 
 
-def _process_pdf(cleaned_data, uploaded_file):
+def _process_pdf(cleaned_data, uploaded_file, occurrence_indices_raw=None):
     unique = uuid.uuid4().hex
     tmp_dir = settings.TMP_DIR
 
@@ -70,7 +70,7 @@ def _process_pdf(cleaned_data, uploaded_file):
 
     has_manual = cleaned_data.get("has_manual", False)
     has_auto = cleaned_data.get("has_auto", False)
-    occurrence_indices = _parse_occurrence_indices(cleaned_data.get("occurrence_indices"))
+    occurrence_indices = _parse_occurrence_indices(occurrence_indices_raw)
 
     try:
         with open(input_path, "wb") as dest:
@@ -133,7 +133,11 @@ def index(request):
         form = PDFProcessForm(request.POST, request.FILES)
         if form.is_valid():
             try:
-                pdf_bytes, download_name = _process_pdf(form.cleaned_data, request.FILES["pdf_file"])
+                pdf_bytes, download_name = _process_pdf(
+                    form.cleaned_data,
+                    request.FILES["pdf_file"],
+                    request.POST.get("occurrence_indices"),
+                )
             except Exception as exc:  
                 form.add_error(None, f"Failed to process PDF: {exc}")
             else:
@@ -228,7 +232,11 @@ def replace_pdf_api(request):
         return JsonResponse({"ok": False, "errors": form.errors}, status=400)
 
     try:
-        pdf_bytes, download_name = _process_pdf(form.cleaned_data, request.FILES["pdf_file"])
+        pdf_bytes, download_name = _process_pdf(
+            form.cleaned_data,
+            request.FILES["pdf_file"],
+            request.POST.get("occurrence_indices"),
+        )
     except Exception as exc: 
         return JsonResponse({"ok": False, "errors": {"__all__": [str(exc)]}}, status=422)
 
