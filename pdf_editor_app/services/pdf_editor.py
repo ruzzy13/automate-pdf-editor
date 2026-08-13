@@ -244,38 +244,41 @@ def find_number_between_words(pdf_path, before_word, stop_symbol="%", y_toleranc
             words = page.get_text("words")
 
             before_candidates = [w for w in words if w[4].strip().lower() == before_word.strip().lower()]
+            for tolerance in (y_tolerance, y_tolerance * 2, y_tolerance * 4, max(y_tolerance * 6, 20)):
+                for bw in before_candidates:
+                    bx1 = bw[2]
+                    y_center = (bw[1] + bw[3]) / 2
 
-            for bw in before_candidates:
-                bx1 = bw[2]
-                y_center = (bw[1] + bw[3]) / 2
+                    same_line = [
+                        w for w in words
+                        if w is not bw
+                        and abs(((w[1] + w[3]) / 2) - y_center) <= tolerance
+                        and w[0] >= bx1 - 1
+                    ]
+                    same_line.sort(key=lambda w: w[0])
 
-                same_line = [
-                    w for w in words
-                    if w is not bw
-                    and abs(((w[1] + w[3]) / 2) - y_center) <= y_tolerance
-                    and w[0] >= bx1 - 1
-                ]
-                same_line.sort(key=lambda w: w[0])
+                    candidate = None
+                    found_symbol_after = False
+                    for w in same_line:
+                        text = w[4].strip()
+                        if candidate is None:
+                            if _NUMBER_TOKEN_RE.match(text):
+                                candidate = w
+                            continue
+                        if stop_symbol in text:
+                            found_symbol_after = True
+                            break
 
-                candidate = None
-                found_symbol_after = False
-                for w in same_line:
-                    text = w[4].strip()
-                    if candidate is None:
-                        if _NUMBER_TOKEN_RE.match(text):
-                            candidate = w
-                        continue
-                    if stop_symbol in text:
-                        found_symbol_after = True
+                    if candidate and found_symbol_after:
+                        rect = fitz.Rect(candidate[0], candidate[1], candidate[2], candidate[3])
+                        result = {
+                            "page_index": page_index,
+                            "rect": rect,
+                            "raw_text": candidate[4].strip(),
+                        }
                         break
 
-                if candidate and found_symbol_after:
-                    rect = fitz.Rect(candidate[0], candidate[1], candidate[2], candidate[3])
-                    result = {
-                        "page_index": page_index,
-                        "rect": rect,
-                        "raw_text": candidate[4].strip(),
-                    }
+                if result:
                     break
 
             if result:
