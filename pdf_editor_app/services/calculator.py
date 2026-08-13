@@ -10,9 +10,6 @@ def calculate_and_print_price(price_before, first_percent, second_percent):
     a = _to_float(first_percent, "first_percent")
     b = _to_float(second_percent, "second_percent")
 
-    '''if a == 0:
-        raise'''
-
     if b == 0:
         raise ZeroDivisionError('Percent value can\'t be 0.')
 
