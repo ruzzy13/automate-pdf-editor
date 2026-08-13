@@ -88,8 +88,7 @@ class PDFProcessForm(forms.Form):
 
         if not has_manual and not has_auto:
             raise forms.ValidationError(
-                "Isi minimal salah satu mode: Find & Replace manual (teks lama & baru) "
-                "atau Kalkulasi otomatis (kata kunci & kedua persentase)."
+                "Please choose one of these features : manual or automatic"
             )
 
         if first_percent is not None and first_percent == 0:
