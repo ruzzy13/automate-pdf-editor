@@ -19,5 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path("", include("pdf_editor_app.urls")),
+    path('editor/', include('pdf_editor_app.urls', namespace='editor')),
+    path('extract/', include('extractor_data.urls', namespace='extractor')),
 ]

@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'pdf_editor_app'
+    'pdf_editor_app',
+    'extractor_data'
 ]
 
 MIDDLEWARE = [
